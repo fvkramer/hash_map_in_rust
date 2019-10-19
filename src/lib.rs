@@ -1,15 +1,15 @@
-const INITIAL_BUCKETS = 1;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
-struct Bucket<K, V> {
-    items: Vec<(K,V)>,
-}
+const INITIAL_BUCKETS: usize = 1;
 
 pub struct HashMap<K, V> {
-    buckets: Vec<Bucket<K,V>>,
+    buckets: Vec<Vec<(K, V)>>,
 }
 
-
-impl<K, V> HashMap<K, V> {
+impl<K, V> HashMap<K, V>
+where K: Hash + Eq
+{
     pub fn new() -> Self {
         HashMap {
             buckets: Vec::new(),
@@ -25,7 +25,20 @@ impl<K, V> HashMap<K, V> {
     }
 
     fn insert(&mut self, key: K, value: V) -> Option<V> {
-        key.hash() % self.buckets.len()
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        let bucket = (hasher.finish() % self.buckets.len() as u64) as usize;
+        let bucket = &mut self.buckets[bucket];
+
+        for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
+            if ekey == &key {
+                use std::mem;
+                return Some(mem::replace(evalue, value));
+            }
+        }
+
+        bucket.push((key, value));
+        None
     }
 
     fn remove() {
@@ -36,3 +49,15 @@ impl<K, V> HashMap<K, V> {
 
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert() {
+        let map = HashMap::new();
+        map.insert("foo", 42);
+    }
+}
+
