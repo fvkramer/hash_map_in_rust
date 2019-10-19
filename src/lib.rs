@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::mem;
 
 const INITIAL_BUCKETS: usize = 1;
 
@@ -24,6 +25,17 @@ where K: Hash + Eq
             n => 2 * n,
         };
 
+        let mut new_buckets = Vec::with_capacity(target_size);
+        new_buckets.extend((0..target_size).map(|_| Vec::new()));
+
+        for (key, value) in self.buckets.iter_mut().flat_map(|bucket| bucket.drain(..)) {
+            let mut hasher = DefaultHasher::new();
+            key.hash(&mut hasher);
+            let bucket = (hasher.finish() % new_buckets.len() as u64) as usize;
+            new_buckets[bucket].push((key, value));
+        }
+
+        mem::replace(&mut self.buckets, new_buckets);
     }
 
     fn insert(&mut self, key: K, value: V) -> Option<V> {
@@ -39,7 +51,6 @@ where K: Hash + Eq
         self.items += 1;
         for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
             if ekey == &key {
-                use std::mem;
                 return Some(mem::replace(evalue, value));
             }
         }
