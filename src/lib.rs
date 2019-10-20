@@ -10,7 +10,8 @@ pub struct HashMap<K, V> {
 }
 
 impl<K, V> HashMap<K, V>
-where K: Hash + Eq
+where
+    K: Hash + Eq,
 {
     pub fn new() -> Self {
         HashMap {
@@ -25,6 +26,12 @@ where K: Hash + Eq
         (hasher.finish() % self.buckets.len() as u64) as usize
     }
 
+    fn remove(&mut self, key: &K) -> Option<V> {
+        let bucket = self.bucket(key);
+        let bucket = &mut self.buckets[bucket];
+        let i = bucket.iter().position(|&(ref ekey, _)| ekey == key)?;
+        Some(bucket.swap_remove(i).1)
+    }
 
     fn resize(&mut self) {
         let target_size = match self.buckets.len() {
@@ -47,9 +54,10 @@ where K: Hash + Eq
 
     pub fn get(&self, key: &K) -> Option<&V> {
         let bucket = self.bucket(key);
-        self.buckets[bucket].iter().find(|&(ref ekey, _)| {
-            ekey == key
-        }).map(|&(_, ref v)| v)
+        self.buckets[bucket]
+            .iter()
+            .find(|&(ref ekey, _)| ekey == key)
+            .map(|&(_, ref v)| v)
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
@@ -71,13 +79,7 @@ where K: Hash + Eq
         None
     }
 
-    fn remove() {
-
-    }
-
-    fn contains_key() {
-
-    }
+    fn contains_key() {}
 }
 
 #[cfg(test)]
@@ -90,5 +92,12 @@ mod tests {
         map.insert("foo", 42);
         assert_eq!(map.get(&"foo"), Some(&42));
     }
-}
 
+    #[test]
+    fn remove() {
+        let mut map = HashMap::new();
+        map.insert("foo", 42);
+        assert_eq!(map.remove(&"bar"), None);
+        assert_eq!(map.remove(&"foo"), Some(42));
+    }
+}
