@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn insert() {
-        let map = HashMap::new();
+        let mut map = HashMap::new();
         map.insert("foo", 42);
     }
 }
