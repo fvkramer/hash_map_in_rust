@@ -26,7 +26,7 @@ where
         (hasher.finish() % self.buckets.len() as u64) as usize
     }
 
-    fn remove(&mut self, key: &K) -> Option<V> {
+    pub fn remove(&mut self, key: &K) -> Option<V> {
         let bucket = self.bucket(key);
         let bucket = &mut self.buckets[bucket];
         let i = bucket.iter().position(|&(ref ekey, _)| ekey == key)?;
@@ -50,6 +50,10 @@ where
         }
 
         mem::replace(&mut self.buckets, new_buckets);
+    }
+
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.get(key).is_some()
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
@@ -78,8 +82,46 @@ where
         bucket.push((key, value));
         None
     }
+}
 
-    fn contains_key() {}
+pub struct Iter<'a, K, V> {
+    map: &'a HashMap<K, V>,
+    bucket: usize,
+    at: usize,
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.buckets.get(self.bucket) {
+                Some(bucket) => match bucket.get(self.at) {
+                    Some(&(ref k, ref v)) => {
+                        self.at += 1;
+                        break Some((k, v));
+                    }
+                    None => {
+                        self.bucket += 1;
+                        self.at = 0;
+                        continue;
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a HashMap<K, V> {
+    type Item = (&'a K, &'a V);
+    type IntoIter = Iter<'a, K, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            map: self,
+            bucket: 0,
+            at: 0,
+        }
+    }
 }
 
 #[cfg(test)]
