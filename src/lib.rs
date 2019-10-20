@@ -19,7 +19,14 @@ where K: Hash + Eq
         }
     }
 
-    pub fn resize(&mut self) {
+    fn bucket(&self, key: &K) -> usize {
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        (hasher.finish() % self.buckets.len() as u64) as usize
+    }
+
+
+    fn resize(&mut self) {
         let target_size = match self.buckets.len() {
             0 => INITIAL_BUCKETS,
             n => 2 * n,
@@ -38,14 +45,19 @@ where K: Hash + Eq
         mem::replace(&mut self.buckets, new_buckets);
     }
 
-    fn insert(&mut self, key: K, value: V) -> Option<V> {
+    pub fn get(&self, key: &K) -> Option<&V> {
+        let bucket = self.bucket(key);
+        self.buckets[bucket].iter().find(|&(ref ekey, _)| {
+            ekey == key
+        }).map(|&(_, ref v)| v)
+    }
+
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         if self.buckets.is_empty() || self.items > 3 * (self.buckets.len() / 4) {
             self.resize();
         }
 
-        let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
-        let bucket = (hasher.finish() % self.buckets.len() as u64) as usize;
+        let bucket = self.bucket(&key);
         let bucket = &mut self.buckets[bucket];
 
         self.items += 1;
@@ -76,6 +88,7 @@ mod tests {
     fn insert() {
         let mut map = HashMap::new();
         map.insert("foo", 42);
+        assert_eq!(map.get(&"foo"), Some(&42));
     }
 }
 
